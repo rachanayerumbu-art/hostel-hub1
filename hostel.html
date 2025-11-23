@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>HostelHub</title>
+<style>
+/* --- BODY --- */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: linear-gradient(135deg, #74ebd5, #ACB6E5);
+    color: #333;
+}
+
+/* --- HEADINGS --- */
+h2 {
+    color: #fff;
+    background: linear-gradient(90deg, #ff4d4d, #3399ff);
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    animation: slideDown 0.8s ease;
+}
+
+/* --- BUTTONS --- */
+button {
+    padding: 10px 15px;
+    margin: 5px;
+    cursor: pointer;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #ff822e, #ff2ebd);
+    color: white;
+    font-weight: bold;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+button:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* --- INPUTS & SELECTS --- */
+input, select, textarea {
+    width: 95%;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 8px;
+    border: 2px solid #888;
+    transition: 0.3s ease;
+}
+input:focus, select:focus, textarea:focus {
+    border-color: #3399ff;
+    box-shadow: 0 0 5px rgba(51,153,255,0.5);
+}
+
+/* --- COMPLAINT BOX --- */
+.complaint {
+    background: linear-gradient(135deg, #fff9cc, #e6f7ff, #ffe6f2);
+    padding: 15px;
+    border-radius: 12px;
+    border-left: 6px solid #ff6600;
+    margin: 10px 0;
+    box-shadow: 0px 0px 12px #999;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.complaint:hover {
+    transform: scale(1.02);
+    box-shadow: 0px 0px 20px #555;
+}
+
+/* --- CHAT BOX --- */
+.chat-box {
+    background: #fff;
+    border-left: 4px solid #3399ff;
+    padding: 8px;
+    margin: 5px 0;
+    border-radius: 6px;
+    animation: fadeIn 0.5s;
+}
+
+/* --- CHAT INPUT --- */
+input[id^="chat"] {
+    width: 70%;
+    margin-right: 5px;
+}
+
+/* --- SECTION --- */
+.section {
+    animation: fadeIn 0.7s;
+    padding: 20px;
+    background: rgba(255,255,255,0.95);
+    margin: 20px auto;
+    border-radius: 12px;
+    max-width: 600px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+/* --- IMAGE IN COMPLAINT --- */
+.complaint img {
+    margin-top: 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    animation: fadeIn 1s;
+}
+
+/* --- ANIMATIONS --- */
+@keyframes fadeIn {
+    from {opacity:0;}
+    to {opacity:1;}
+}
+@keyframes slideDown {
+    from {opacity:0; transform: translateY(-30px);}
+    to {opacity:1; transform: translateY(0);}
+}
+</style>
+</head>
+<body>
+
+<!-- STUDENT LOGIN -->
+<div id="studentLogin" class="section">
+    <h2>Student Login</h2>
+    <input id="studentName" placeholder="Enter Name">
+    <button onclick="loginStudent()">Login</button>
+    <button onclick="showSection('adminLogin')">Admin Login</button>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div id="adminLogin" class="section" style="display:none;">
+    <h2>Admin Login</h2>
+    <input type="password" id="adminPass" placeholder="Enter Admin Password">
+    <button onclick="loginAdmin()">Login</button>
+    <button onclick="showSection('studentLogin')">Back</button>
+</div>
+
+<!-- STUDENT DASHBOARD -->
+<div id="studentDashboard" class="section" style="display:none;">
+    <h2>Student Dashboard</h2>
+    <button onclick="logout()" style="background:#ff0000;">Logout</button>
+
+    <h3>Raise a Complaint</h3>
+    <input id="ctitle" placeholder="Title">
+    <textarea id="cdesc" placeholder="Description"></textarea>
+
+    <label>Category</label>
+    <select id="ccategory">
+        <option>Electrical</option>
+        <option>Plumbing</option>
+        <option>Internet</option>
+        <option>Furniture</option>
+        <option>General</option>
+    </select>
+
+    <label>Priority</label>
+    <select id="cpriority">
+        <option>Low</option>
+        <option>Medium</option>
+        <option>High</option>
+    </select>
+
+    <br><br>
+    <input type="file" id="cimage">
+    <button onclick="raiseComplaint()">Submit</button>
+
+    <h3>Your Complaint History</h3>
+    <div id="history"></div>
+</div>
+
+<!-- ADMIN DASHBOARD -->
+<div id="adminDashboard" class="section" style="display:none;">
+    <h2>Admin Dashboard</h2>
+    <button onclick="logout()" style="background:#ff0000;">Logout</button>
+
+    <h3>Department</h3>
+    <select id="deptSelect" onchange="changeDept()">
+        <option>General</option>
+        <option>Electrical</option>
+        <option>Plumbing</option>
+        <option>Internet</option>
+        <option>Furniture</option>
+    </select>
+
+    <h3>Complaints</h3>
+    <div id="adminComplaints"></div>
+</div>
+
+<script>
+// --- DATA & STATE ---
+let currentStudent = "";
+let adminDepartment = "General";
+let complaints = JSON.parse(localStorage.getItem("complaints") || "[]");
+
+// --- SECTION NAVIGATION ---
+function showSection(id) {
+    document.querySelectorAll(".section").forEach(sec => sec.style.display = "none");
+    document.getElementById(id).style.display = "block";
+}
+
+// --- STUDENT LOGIN ---
+function loginStudent() {
+    let name = document.getElementById("studentName").value.trim();
+    if (!name) return alert("Enter name!");
+    currentStudent = name;
+    showSection("studentDashboard");
+    loadHistory();
+}
+
+// --- LOGOUT ---
+function logout() {
+    currentStudent = "";
+    showSection("studentLogin");
+}
+
+// --- ADMIN LOGIN ---
+function loginAdmin() {
+    let pass = document.getElementById("adminPass").value;
+    if (pass !== "admin") return alert("Incorrect password!");
+    showSection("adminDashboard");
+    loadAdminComplaints();
+}
+
+// --- DEPARTMENT CHANGE ---
+function changeDept() {
+    adminDepartment = document.getElementById("deptSelect").value;
+    loadAdminComplaints();
+}
+
+// --- RAISE COMPLAINT ---
+function raiseComplaint() {
+    let title = document.getElementById("ctitle").value;
+    let desc = document.getElementById("cdesc").value;
+    let cat = document.getElementById("ccategory").value;
+    let pr = document.getElementById("cpriority").value;
+    let imgFile = document.getElementById("cimage").files[0];
+
+    if (!title || !desc) return alert("Enter title & description!");
+
+    if (imgFile) {
+        let reader = new FileReader();
+        reader.onload = (e) => saveComplaint(title, desc, cat, pr, e.target.result);
+        reader.readAsDataURL(imgFile);
+    } else {
+        saveComplaint(title, desc, cat, pr, "");
+    }
+}
+
+function saveComplaint(title, desc, cat, pr, img) {
+    let obj = {
+        id: Date.now(),
+        user: currentStudent,
+        title,
+        description: desc,
+        category: cat,
+        priority: pr,
+        image: img,
+        status: "Open",
+        chat: []
+    };
+    complaints.push(obj);
+    localStorage.setItem("complaints", JSON.stringify(complaints));
+    alert("Complaint Submitted!");
+    loadHistory();
+}
+
+// --- LOAD STUDENT HISTORY ---
+function loadHistory() {
+    let box = document.getElementById("history");
+    box.innerHTML = "";
+    let userComplaints = complaints.filter(c => c.user === currentStudent);
+    if(userComplaints.length===0) {
+        box.innerHTML = "<p>No complaints yet.</p>";
+        return;
+    }
+    userComplaints.forEach(c => {
+        box.innerHTML += `
+            <div class="complaint">
+                <b>${c.title}</b> (${c.category})<br>
+                Status: ${c.status}<br>
+                <p>${c.description}</p>
+                ${c.image ? <img src="${c.image}" width="120"> : ""}
+            </div>
+        `;
+    });
+}
+
+// --- LOAD ADMIN COMPLAINTS ---
+function loadAdminComplaints() {
+    let container = document.getElementById("adminComplaints");
+    container.innerHTML = "";
+    let filtered = complaints.filter(c => adminDepartment === "General" || c.category === adminDepartment);
+
+    // Sort High → Medium → Low
+    const prio = { High: 3, Medium: 2, Low: 1 };
+    filtered.sort((a, b) => prio[b.priority] - prio[a.priority]);
+
+    if (filtered.length === 0) {
+        container.innerHTML = "<p>No complaints in this department.</p>";
+        return;
+    }
+
+    filtered.forEach(c => {
+        container.innerHTML += `
+            <div class="complaint">
+                <b>${c.title}</b> (${c.priority})<br>
+                By: ${c.user}<br>
+                <p>${c.description}</p>
+                ${c.image ? <img src="${c.image}" width="120"> : ""}<br>
+                <label>Status:</label>
+                <select onchange="updateStatusById(${c.id}, this.value)">
+                    <option ${c.status === "Open" ? "selected" : ""}>Open</option>
+                    <option ${c.status === "In Progress" ? "selected" : ""}>In Progress</option>
+                    <option ${c.status === "Resolved" ? "selected" : ""}>Resolved</option>
+                </select>
+                <h4>Chat</h4>
+                ${c.chat.map(m => <div class="chat-box">${m}</div>).join("")}
+                <input id="chat${c.id}" placeholder="Type message">
+                <button onclick="sendMessageById(${c.id})">Send</button>
+            </div>
+        `;
+    });
+}
+
+// --- SEND MESSAGE ---
+function sendMessageById(id) {
+    let msg = document.getElementById("chat" + id).value;
+    if (!msg.trim()) return;
+    let complaint = complaints.find(c => c.id === id);
+    complaint.chat.push("Admin: " + msg);
+    localStorage.setItem("complaints", JSON.stringify(complaints));
+    loadAdminComplaints();
+}
+
+// --- UPDATE STATUS ---
+function updateStatusById(id, value) {
+    let c = complaints.find(x => x.id === id);
+    c.status = value;
+    localStorage.setItem("complaints", JSON.stringify(complaints));
+    alert("Student notified.");
+    loadAdminComplaints();
+}
+</script>
+</body>
+</html>
